@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
-import { uploadAvatar } from "./supabase";
+import { uploadAvatar, supabase } from "./supabase";
+import LandingPage from "./LandingPage";
 
 const C = {
   bg:"#080808", bg2:"#0f0f0f", bg3:"#141414", bg4:"#1a1a1a",
@@ -668,24 +669,22 @@ const btnStyle = {
   display:"flex",alignItems:"center",justifyContent:"center",fontFamily:mono,
 };
 
-// ── ROOT ─────────────────────────────────────────────────────
-export default function ChadStudioIO() {
-  const [screen,     setScreen]     = useState("GENERATOR");
-  const [apiKey,     setApiKey]     = useState("");
+// ── STUDIO (authenticated) ────────────────────────────────────
+function Studio({ session }) {
+  const [screen,       setScreen]       = useState("GENERATOR");
+  const [apiKey,       setApiKey]       = useState("");
   const [showKeyInput, setShowKeyInput] = useState(false);
-  const [studioData, setStudioData] = useState(null);
+  const [studioData,   setStudioData]   = useState(null);
 
-  const handleVideoReady = data => {
-    setStudioData(data);
-    setScreen("ADVANCED STUDIO");
-  };
+  const handleVideoReady = data => { setStudioData(data); setScreen("ADVANCED STUDIO"); };
+  const signOut = () => supabase.auth.signOut();
 
   return (
     <div style={{height:"100vh",background:C.bg,color:C.text,fontFamily:mono,display:"flex",flexDirection:"column",overflow:"hidden"}}>
 
       {/* NAV */}
       <nav style={{display:"flex",alignItems:"center",padding:"0 16px",height:"46px",borderBottom:`1px solid ${C.border}`,background:C.bg,flexShrink:0,gap:"20px"}}>
-        <div style={{fontFamily:mono,fontWeight:"700",fontSize:"0.9rem",letterSpacing:"2px",textTransform:"uppercase"}}>
+        <div style={{fontFamily:mono,fontWeight:"700",fontSize:"0.9rem",letterSpacing:"2px"}}>
           <span style={{color:C.gold}}>CHAD</span><span style={{color:C.text}}>STUDIO</span><span style={{color:C.text3}}>.IO</span>
         </div>
         <div style={{display:"flex",gap:"0"}}>
@@ -700,11 +699,19 @@ export default function ChadStudioIO() {
           ))}
         </div>
         <div style={{flex:1}}/>
-        <div style={{display:"flex",alignItems:"center",gap:"6px"}}>
-          <div style={{width:"7px",height:"7px",borderRadius:"50%",background:apiKey.length>10?C.green:C.red}}/>
-          <div style={{fontFamily:mono,fontSize:"0.48rem",letterSpacing:"1px",color:apiKey.length>10?C.green:C.red}}>
-            {apiKey.length>10?"GOOGLE AI CONNECTED":"NOT CONNECTED"}
+        <div style={{display:"flex",alignItems:"center",gap:"12px"}}>
+          <div style={{display:"flex",alignItems:"center",gap:"6px"}}>
+            <div style={{width:"7px",height:"7px",borderRadius:"50%",background:apiKey.length>10?C.green:C.red}}/>
+            <div style={{fontFamily:mono,fontSize:"0.48rem",letterSpacing:"1px",color:apiKey.length>10?C.green:C.red}}>
+              {apiKey.length>10?"GOOGLE AI CONNECTED":"NOT CONNECTED"}
+            </div>
           </div>
+          <div style={{fontFamily:mono,fontSize:"0.44rem",color:C.text3,maxWidth:"140px",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
+            {session.user.email}
+          </div>
+          <button onClick={signOut} style={{fontFamily:mono,fontSize:"0.46rem",color:C.text3,border:`1px solid ${C.border2}`,background:"transparent",padding:"4px 10px",cursor:"pointer",borderRadius:"2px",letterSpacing:"1px"}}>
+            SIGN OUT
+          </button>
         </div>
       </nav>
 
@@ -725,7 +732,27 @@ export default function ChadStudioIO() {
         {screen==="GENERATOR"       && <Generator apiKey={apiKey} onVideoReady={handleVideoReady}/>}
         {screen==="ADVANCED STUDIO" && <AdvancedStudio studioData={studioData}/>}
       </div>
-
     </div>
   );
+}
+
+// ── ROOT ─────────────────────────────────────────────────────
+export default function ChadStudioIO() {
+  const [session, setSession] = useState(undefined); // undefined = loading
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => setSession(session));
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => setSession(session));
+    return () => subscription.unsubscribe();
+  }, []);
+
+  if (session === undefined) return (
+    <div style={{height:"100vh",background:"#080808",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Courier New',monospace",color:"#d4a843",fontSize:"0.6rem",letterSpacing:"3px"}}>
+      LOADING...
+    </div>
+  );
+
+  if (!session) return <LandingPage />;
+
+  return <Studio session={session} />;
 }
