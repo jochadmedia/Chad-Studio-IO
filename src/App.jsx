@@ -223,7 +223,9 @@ function ImageWorkshop({ apiKey, imgFile, imgUrl, setImgFile, setImgUrl }) {
   const [generating, setGenerating] = useState(false);
   const [genError,   setGenError]   = useState("");
   const [previewUrl, setPreviewUrl] = useState("");
+  const [refB64,     setRefB64]     = useState("");   // reference image for consistency
   const uploadRef = useRef();
+  const refUploadRef = useRef();
 
   const handleUpload = async f => {
     if (!f) return;
@@ -231,12 +233,21 @@ function ImageWorkshop({ apiKey, imgFile, imgUrl, setImgFile, setImgUrl }) {
     setImgFile(f); setImgUrl(du); setPreviewUrl("");
   };
 
+  const handleRefUpload = async f => {
+    if (!f) return;
+    const du = await readDataUrl(f);
+    setRefB64(du);
+  };
+
+  // If the user already has an approved image, auto-use it as the reference
+  const effectiveRef = refB64 || imgUrl || null;
+
   const handleGenerate = async () => {
     if (!apiKey||apiKey.length<10) { setGenError("Enter API key first."); return; }
-    if (!imgPrompt.trim()) { setGenError("Describe the artist look first."); return; }
+    if (!imgPrompt.trim()) { setGenError("Tell Nano Banana what to do with the image first."); return; }
     setGenerating(true); setGenError(""); setPreviewUrl("");
     try {
-      const url = await callNanoBanana2(apiKey, imgPrompt.trim());
+      const url = await callNanoBanana2(apiKey, imgPrompt.trim(), effectiveRef);
       setPreviewUrl(url);
     } catch(e) { setGenError(e.message); }
     finally { setGenerating(false); }
@@ -277,7 +288,7 @@ function ImageWorkshop({ apiKey, imgFile, imgUrl, setImgFile, setImgUrl }) {
           style={{border:`1px dashed ${C.border2}`,borderRadius:"3px",padding:"16px",background:C.bg3,cursor:"pointer",textAlign:"center",marginBottom:"8px",transition:"all 0.15s"}}
           onMouseOver={e=>e.currentTarget.style.borderColor=C.gold}
           onMouseOut={e=>e.currentTarget.style.borderColor=C.border2}>
-          <input ref={uploadRef} type="file" accept="image/jpeg,image/png,image/webp" capture="user" style={{display:"none"}} onChange={e=>handleUpload(e.target.files[0])}/>
+          <input ref={uploadRef} type="file" accept="image/jpeg,image/png,image/webp" style={{display:"none"}} onChange={e=>handleUpload(e.target.files[0])}/>
           <div style={{fontSize:"1.8rem",opacity:0.35,marginBottom:"6px"}}>📷</div>
           <div style={{fontFamily:mono,fontSize:"0.62rem",fontWeight:"700",color:C.text2,letterSpacing:"1px"}}>TAP TO UPLOAD FACE PHOTO</div>
           <div style={{fontFamily:mono,fontSize:"0.5rem",color:C.text3,marginTop:"3px"}}>Head-on shot — clear face required</div>
@@ -298,19 +309,50 @@ function ImageWorkshop({ apiKey, imgFile, imgUrl, setImgFile, setImgUrl }) {
       {/* Nano Banana 2 panel */}
       {expanded && (
         <div style={{marginTop:"6px",background:C.bg2,border:`1px solid rgba(212,168,67,0.3)`,borderRadius:"3px",padding:"12px",display:"flex",flexDirection:"column",gap:"10px"}}>
-          <div style={{fontFamily:mono,fontSize:"0.46rem",color:C.gold,letterSpacing:"2px"}}>✨ NANO BANANA 2 · DESCRIBE THE ARTIST LOOK</div>
+          <div style={{fontFamily:mono,fontSize:"0.46rem",color:C.gold,letterSpacing:"2px"}}>✨ NANO BANANA 2 · IMAGE CONSISTENCY ENGINE</div>
 
-          <textarea value={imgPrompt} onChange={e=>setImgPrompt(e.target.value)}
-            placeholder={"e.g. Black male, 30s, wearing gold chain and dark hoodie,\nconfident expression, neutral background"}
-            maxLength={400}
-            style={{width:"100%",boxSizing:"border-box",background:C.bg3,border:`1px solid ${C.border2}`,borderRadius:"3px",padding:"8px 10px",fontFamily:mono,fontSize:"0.55rem",color:C.text2,lineHeight:1.7,resize:"vertical",minHeight:"80px",outline:"none"}}/>
-          <div style={{fontFamily:mono,fontSize:"0.43rem",color:C.text3,textAlign:"right",marginTop:"-6px"}}>{imgPrompt.length}/400</div>
+          {/* Reference image section */}
+          <div>
+            <div style={{fontFamily:mono,fontSize:"0.43rem",color:C.text3,letterSpacing:"1px",marginBottom:"6px"}}>
+              STEP 1 — REFERENCE IMAGE {effectiveRef ? <span style={{color:C.green}}>✓ LOADED</span> : <span style={{color:C.text3}}>(OPTIONAL — upload or use approved image above)</span>}
+            </div>
+            {effectiveRef
+              ? <div style={{display:"flex",alignItems:"center",gap:"8px",background:C.bg3,border:`1px solid ${C.green}`,borderRadius:"3px",padding:"8px"}}>
+                  <img src={effectiveRef} alt="ref" style={{width:"44px",height:"44px",objectFit:"cover",borderRadius:"3px",border:`1px solid ${C.green}`}}/>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontFamily:mono,fontSize:"0.5rem",fontWeight:"700",color:C.green}}>✓ REFERENCE IMAGE SET</div>
+                    <div style={{fontFamily:mono,fontSize:"0.43rem",color:C.text3,marginTop:"2px"}}>Nano Banana will keep this subject consistent</div>
+                  </div>
+                  {refB64 && <button onClick={()=>setRefB64("")} style={{fontFamily:mono,fontSize:"0.43rem",color:C.red,border:`1px solid ${C.red}`,background:"transparent",padding:"2px 6px",cursor:"pointer",borderRadius:"2px",flexShrink:0}}>✕</button>}
+                </div>
+              : <div onClick={()=>refUploadRef.current?.click()}
+                  style={{border:`1px dashed ${C.border2}`,borderRadius:"3px",padding:"12px",cursor:"pointer",textAlign:"center"}}
+                  onMouseOver={e=>e.currentTarget.style.borderColor=C.gold}
+                  onMouseOut={e=>e.currentTarget.style.borderColor=C.border2}>
+                  <input ref={refUploadRef} type="file" accept="image/jpeg,image/png,image/webp" style={{display:"none"}} onChange={e=>handleRefUpload(e.target.files[0])}/>
+                  <div style={{fontFamily:mono,fontSize:"0.55rem",fontWeight:"700",color:C.text2,letterSpacing:"1px"}}>TAP TO UPLOAD REFERENCE IMAGE</div>
+                  <div style={{fontFamily:mono,fontSize:"0.43rem",color:C.text3,marginTop:"3px"}}>Or approve an image above — it will auto-load here</div>
+                </div>
+            }
+          </div>
+
+          {/* Prompt */}
+          <div>
+            <div style={{fontFamily:mono,fontSize:"0.43rem",color:C.text3,letterSpacing:"1px",marginBottom:"6px"}}>STEP 2 — WHAT DO YOU WANT NANO BANANA TO DO WITH THIS IMAGE?</div>
+            <textarea value={imgPrompt} onChange={e=>setImgPrompt(e.target.value)}
+              placeholder={effectiveRef
+                ? "e.g. Place this person in a white car driving across the city at night, cinematic lighting"
+                : "e.g. Black male, 30s, wearing gold chain and dark hoodie, confident expression, neutral background"}
+              maxLength={400}
+              style={{width:"100%",boxSizing:"border-box",background:C.bg3,border:`1px solid ${C.border2}`,borderRadius:"3px",padding:"8px 10px",fontFamily:mono,fontSize:"0.55rem",color:C.text2,lineHeight:1.7,resize:"vertical",minHeight:"80px",outline:"none"}}/>
+            <div style={{fontFamily:mono,fontSize:"0.43rem",color:C.text3,textAlign:"right",marginTop:"2px"}}>{imgPrompt.length}/400</div>
+          </div>
 
           <button onClick={handleGenerate} disabled={generating||!imgPrompt.trim()} style={{
             padding:"9px",fontFamily:mono,fontWeight:"700",fontSize:"0.6rem",letterSpacing:"2px",cursor:generating||!imgPrompt.trim()?"not-allowed":"pointer",borderRadius:"3px",
             background:generating?"rgba(212,168,67,0.1)":C.gold,border:`1px solid ${C.gold}`,color:generating?C.gold:C.bg,
           }}>
-            {generating?"⚡ GENERATING WITH NANO BANANA 2...":"▶ GENERATE FACE"}
+            {generating ? "⚡ GENERATING WITH NANO BANANA 2..." : effectiveRef ? "▶ GENERATE CONSISTENT IMAGE" : "▶ GENERATE IMAGE"}
           </button>
 
           {genError && <div style={{fontFamily:mono,fontSize:"0.52rem",color:C.red}}>✗ {genError}</div>}
@@ -2036,7 +2078,7 @@ function Profile({ session, onSignOut }) {
                 ? <img src={avatarUrl} alt="avatar" style={{width:"100%",height:"100%",objectFit:"cover"}}/>
                 : session?.user?.email?.[0].toUpperCase() || "?"}
             </div>
-            <input ref={avatarRef} type="file" accept="image/jpeg,image/png,image/webp" capture="user" style={{display:"none"}} onChange={handleAvatarUpload}/>
+            <input ref={avatarRef} type="file" accept="image/jpeg,image/png,image/webp" style={{display:"none"}} onChange={handleAvatarUpload}/>
 
             <div style={{flex:1,minWidth:0}}>
               {/* Editable display name */}
