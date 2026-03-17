@@ -38,9 +38,9 @@ const PIPELINE_STAGES = [
   { id:"ingest",    icon:"📁", name:"ASSET INGEST",     model:"Local → Memory"   },
   { id:"transcribe",icon:"🎙", name:"AUDIO TRANSCRIBE", model:"gemini-2.5-flash" },
   { id:"prompt",    icon:"🧠", name:"PROMPT BUILD",      model:"gemini-2.5-flash" },
-  { id:"generate",  icon:"🎬", name:"VIDEO GENERATE",    model:"veo-3.1-fast-001" },
+  { id:"generate",  icon:"🎬", name:"VIDEO GENERATE",    model:"veo-3-fast-001" },
   { id:"sync",      icon:"🔄", name:"SYNC ANALYSIS",     model:"gemini-2.5-flash" },
-  { id:"broll",     icon:"🎥", name:"B-ROLL GENERATE",   model:"veo-3.1-fast-001" },
+  { id:"broll",     icon:"🎥", name:"B-ROLL GENERATE",   model:"veo-3-fast-001" },
   { id:"compose",   icon:"🎞", name:"COMPOSE",           model:"Merge + Grade"   },
   { id:"ready",     icon:"✅", name:"READY",             model:"Studio Unlock"   },
 ];
@@ -108,7 +108,7 @@ async function startVeo(apiKey, prompt, imgB64, imgMime, durationSeconds=8) {
   const instance = { prompt };
   if (imgB64) instance.image = { bytesBase64Encoded: imgB64, mimeType: imgMime };
   const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/veo-3.1-fast-generate-001:predictLongRunning?key=${apiKey}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/veo-3-fast-generate-001:predictLongRunning?key=${apiKey}`,
     { method:"POST", headers:{"Content-Type":"application/json"},
       body:JSON.stringify({
         instances: [instance],
@@ -477,6 +477,7 @@ function Generator({ apiKey, onVideoReady }) {
   const [brollClips, setBrollClips] = useState([]);
 
   const [hasError,   setHasError]   = useState(false);
+  const [errorMsg,   setErrorMsg]   = useState("");
 
   const logRef = useRef();
   useEffect(()=>{ if(logRef.current) logRef.current.scrollTop=logRef.current.scrollHeight; },[logs]);
@@ -515,7 +516,7 @@ function Generator({ apiKey, onVideoReady }) {
 
   const handleGen = async () => {
     if (!canRun||running) return;
-    setRunning(true); setDone(false); setHasError(false); setLogs([]); setVeoPrompt(""); setVideoUrl("");
+    setRunning(true); setDone(false); setHasError(false); setErrorMsg(""); setLogs([]); setVeoPrompt(""); setVideoUrl("");
     setStagesDone([]); setPoll(0); setProgress(0); setCutPoints([]); setBrollClips([]);
 
     try {
@@ -724,6 +725,7 @@ Return ONLY the shot description — no quotes, no labels.`;
       log(`✗ ERROR: ${err.message}`,"err");
       setActiveStg("");
       setHasError(true); // 7.6
+      setErrorMsg(err.message);
     } finally {
       setRunning(false);
     }
@@ -820,14 +822,22 @@ Return ONLY the shot description — no quotes, no labels.`;
 
           {/* 7.6 — retry button shown after error */}
           {hasError && !running && (
-            <button onClick={handleGen} disabled={!canRun} style={{
-              width:"100%", padding:"10px", marginTop:"8px",
-              background:"transparent", border:`1px solid ${C.red}`, color:C.red,
-              fontFamily:mono, fontWeight:"700", fontSize:"0.62rem", letterSpacing:"2px",
-              cursor:canRun?"pointer":"not-allowed", borderRadius:"3px",
-            }}>
-              ↺ RETRY — inputs preserved
-            </button>
+            <div style={{marginTop:"8px",display:"flex",flexDirection:"column",gap:"6px"}}>
+              {errorMsg && (
+                <div style={{background:"rgba(255,82,82,0.08)",border:`1px solid ${C.red}`,borderRadius:"3px",padding:"10px 12px"}}>
+                  <div style={{fontFamily:mono,fontSize:"0.5rem",fontWeight:"700",color:C.red,letterSpacing:"1px",marginBottom:"4px"}}>✗ ERROR — WHY IT FAILED:</div>
+                  <div style={{fontFamily:mono,fontSize:"0.52rem",color:"#ff8a80",lineHeight:1.6,wordBreak:"break-word"}}>{errorMsg}</div>
+                </div>
+              )}
+              <button onClick={handleGen} disabled={!canRun} style={{
+                width:"100%", padding:"10px",
+                background:"transparent", border:`1px solid ${C.red}`, color:C.red,
+                fontFamily:mono, fontWeight:"700", fontSize:"0.62rem", letterSpacing:"2px",
+                cursor:canRun?"pointer":"not-allowed", borderRadius:"3px",
+              }}>
+                ↺ RETRY — inputs preserved
+              </button>
+            </div>
           )}
 
           <div style={{height:"20px"}}/>
