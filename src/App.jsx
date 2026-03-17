@@ -116,7 +116,6 @@ async function startVeo(apiKey, prompt, imgB64, imgMime, durationSeconds=8) {
           aspectRatio: "9:16",
           durationSeconds,
           personGeneration: "allow_adult",
-          mediaResolution: "MEDIA_RESOLUTION_MEDIUM",
         }
       })
     }
