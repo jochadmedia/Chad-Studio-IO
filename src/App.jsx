@@ -117,7 +117,6 @@ async function startVeo(apiKey, prompt, imgB64, imgMime, durationSeconds=8) {
           durationSeconds,
           personGeneration: "allow_adult",
           mediaResolution: "MEDIA_RESOLUTION_MEDIUM",
-          enhancePrompt: false,
         }
       })
     }
