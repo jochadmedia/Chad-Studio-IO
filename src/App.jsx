@@ -38,9 +38,9 @@ const PIPELINE_STAGES = [
   { id:"ingest",    icon:"📁", name:"ASSET INGEST",     model:"Local → Memory"   },
   { id:"transcribe",icon:"🎙", name:"AUDIO TRANSCRIBE", model:"gemini-2.5-flash" },
   { id:"prompt",    icon:"🧠", name:"PROMPT BUILD",      model:"gemini-2.5-flash" },
-  { id:"generate",  icon:"🎬", name:"VIDEO GENERATE",    model:"veo-3-fast-001" },
+  { id:"generate",  icon:"🎬", name:"VIDEO GENERATE",    model:"veo-3.0-fast-001" },
   { id:"sync",      icon:"🔄", name:"SYNC ANALYSIS",     model:"gemini-2.5-flash" },
-  { id:"broll",     icon:"🎥", name:"B-ROLL GENERATE",   model:"veo-3-fast-001" },
+  { id:"broll",     icon:"🎥", name:"B-ROLL GENERATE",   model:"veo-3.0-fast-001" },
   { id:"compose",   icon:"🎞", name:"COMPOSE",           model:"Merge + Grade"   },
   { id:"ready",     icon:"✅", name:"READY",             model:"Studio Unlock"   },
 ];
@@ -108,7 +108,7 @@ async function startVeo(apiKey, prompt, imgB64, imgMime, durationSeconds=8) {
   const instance = { prompt };
   if (imgB64) instance.image = { bytesBase64Encoded: imgB64, mimeType: imgMime };
   const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/veo-3-fast-generate-001:predictLongRunning?key=${apiKey}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/veo-3.0-fast-generate-001:predictLongRunning?key=${apiKey}`,
     { method:"POST", headers:{"Content-Type":"application/json"},
       body:JSON.stringify({
         instances: [instance],
